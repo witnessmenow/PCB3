@@ -1,9 +1,25 @@
+/*******************************************************************
+ *  Christmas 3 PCB - A Christmas tree shaped PCB
+ *  
+ *  12 Charlie-plexed LEDs running off an Attiny13
+ *  
+ *  By Brian Lough
+ *  YouTube: https://www.youtube.com/brianlough
+ *  Tindie: https://www.tindie.com/stores/brianlough/
+ *  Twitch: https://twitch.tv/brianlough
+ *  Twitter: @witnessmenow
+ *******************************************************************/
+
 #include <avr/sleep.h>
 #define nop() asm volatile("nop")
+
+#define MODE_AMOUNT 12
+#define LED_ON_TIME 4096
 
 boolean leds_on = true;
 unsigned long badly_programmed_counter = 0;
 int speedMultiplier = 1;
+int mode = 0;
 
 ISR(INT0_vect) {
   sleep_disable();
@@ -31,39 +47,60 @@ void loop() {
   {
 
     badly_programmed_counter++;
-//    if (badly_programmed_counter % 2 == 1)
-//    {
-//      charlie(10);
-//    }
-//    else
-//    {
-//      leds_off();
-//    }
     delay(10);
 
     if (badly_programmed_counter >= 100)
     {
-      speedMultiplier = badly_programmed_counter /100;
+      mode++;
+      badly_programmed_counter = 0;
     }
 
-    if(badly_programmed_counter >= 600)
+    if (mode >= MODE_AMOUNT)
     {
-      badly_programmed_counter = 100;
-      speedMultiplier = 1;
+      mode = 0;
     }
 
-    charlie(speedMultiplier);
-    //delay(50);
+    charlie(mode);
   }
   else
   {
-    animate_leds();
+    playAnimation();
     badly_programmed_counter = 0;
   }
 }
 
-void shutdown_chip()
-{
+void playAnimation() {
+  switch (mode) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      speedMultiplier = mode + 1;
+      flashLeds(false);
+      break;
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+      speedMultiplier = mode - 4;
+      flashLeds(true);
+      break;
+    case 10:
+      lightAllLED();
+      break;
+    case 11:
+      lightAllLED();
+      leds_off();
+      delay(100);
+      break;
+    default:
+      ;
+  }
+}
+
+void shutdown_chip() {
   leds_off();
 
   /* Clear WDRF in MCUSR */
@@ -88,82 +125,77 @@ void shutdown_chip()
 
 
 
-void animate_leds()
+void flashLeds(bool twoLeds)
 {
   for (int i = 0; i < 12; i++) {
-    led_pwm(i);
-//    int ledTwo = i + 1;
-//    if(ledTwo >= 12){
-//      ledTwo = 0;
-//    }
-//    two_led_pwm(i, ledTwo);
-    //delay(100);
+    if (!twoLeds)
+    {
+      two_led_pwm(i, -1);
+    } else {
+      int ledTwo = i + 1;
+      if (ledTwo >= 12) {
+        ledTwo = 0;
+      }
+      two_led_pwm(i, ledTwo);
+    }
   }
 
   for (int i = 0; i < 12; i++) {
-    led_pwm(11-i);
-//    int ledTwo = i - 1;
-//    if(ledTwo < 0){
-//      ledTwo = 11;
-//    }
-//    two_led_pwm(i, ledTwo);
-    //delay(100);
+    if (!twoLeds)
+    {
+      two_led_pwm(11 - i, -1);
+    } else {
+      int ledTwo = i - 1;
+      if (ledTwo < 0) {
+        ledTwo = 11;
+      }
+      two_led_pwm(i, ledTwo);
+    }
   }
-  
-  led_pwm(11);
+
+  two_led_pwm(11, -1);
 }
 
-int ledOnTime = 4096;
-
-void led_pwm(int i)
-{
-  int repeater = ledOnTime * speedMultiplier;
-  for (int j=0; j<repeater; j++)
+void lightAllLED(){
+  for (int j = 0; j < LED_ON_TIME; j++)
+  {
+    for(int i = 0; i < 12; i++)
     {
       charlie(i);
-      nop();
-      nop();
-      nop();
-      nop();
-      //delay(10);
-      leds_off();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
     }
+  }
 }
 
 void two_led_pwm(int ledOne, int ledTwo)
 {
-  int repeater = ledOnTime * speedMultiplier;
-  for (int j=0; j<repeater; j++)
-    {
-      charlie(ledOne);
-      nop();
-      nop();
-      nop();
-      nop();
-      //delay(10);
+  int repeater = LED_ON_TIME * speedMultiplier;
+  for (int j = 0; j < repeater; j++)
+  {
+    charlie(ledOne);
+    nop();
+    nop();
+    nop();
+    
+    if(ledTwo > -1){
       charlie(ledTwo);
-      nop();
-      nop();
-      nop();
-      nop();
+    } else {
       leds_off();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
-      nop();
     }
+
+    nop();
+    nop();
+    nop();
+    
+    if(ledTwo > -1){
+      leds_off();
+    }
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+  }
 }
 
 void leds_off()
