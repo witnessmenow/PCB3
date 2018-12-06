@@ -17,7 +17,7 @@
 #define LED_ON_TIME 4096
 
 boolean leds_on = true;
-unsigned long badly_programmed_counter = 0;
+int badly_programmed_counter = 0;
 int speedMultiplier = 1;
 int mode = 0;
 
